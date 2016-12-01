@@ -7,6 +7,8 @@ if [ ! -f "/backups/zfs_mounted" ]; then
 	exit 1
 fi	
 
+# call like ./zrbackup $hostname
+
 ZPOOL=tank
 FILESYSTEM=backups
 BACKUPHOSTS=backup-hosts
