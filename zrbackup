@@ -13,6 +13,7 @@ BACKUPHOSTS=backup-hosts
 LOCKDIR=/var/run
 LOCKFILE=zrbackup-${1}.pid
 EXCLUDEBASE=backup-exclude-
+SOURCEIP=a.b.c.d
 
 if [ -z "$1" ]; then
         BACKUPHOSTS="/$FILESYSTEM/$BACKUPHOSTS"
@@ -103,22 +104,14 @@ function runbackups {
       zfs set exec=off $ZPOOL/$FILESYSTEM/$BACKUPHOST
       mkdir /$FILESYSTEM/$BACKUPHOST/mountpoints
     fi
-    if [ "${BACKUPHOST}" == "karen.meerval.net" ]; then
-	MOUNTPOINTS="/"
-    elif [ "${BACKUPHOST}" == "mirror.meerval.net" ]; then
-	MOUNTPOINTS="/"
-    elif [ "${BACKUPHOST}" == "kiera.meerval.net" ]; then
-	MOUNTPOINTS="/"
-    elif [ "${BACKUPHOST}" == "backup-peeringdb.meerval.net" ]; then
-	MOUNTPOINTS="/"
-    elif [ "${BACKUPHOST}" == "backup-nanog.meerval.net" ]; then
+    if [ "${BACKUPHOST}" == "mirror.meerval.net" ]; then
 	MOUNTPOINTS="/"
     elif [ "${BACKUPHOST}" == "lisa.meerval.net" ]; then
 	MOUNTPOINTS="/ /home /usr"
     elif [ "${BACKUPHOST}" == "tangier.meerval.net" ]; then
-    	MOUNTPOINTS=`ssh -4 -b 192.147.168.1 $BACKUPHOST cat /etc/mtab | grep " ext2 \| ext3 \| ext4 \| xfs \| vfat \| zfs" | grep -v "/tank/machines" | grep -v "/tank/backups" | grep -v "/tank/mirror" | cut -f 2 -d ' '`
+    	MOUNTPOINTS=`ssh -4 -b $SOURCEIP $BACKUPHOST cat /etc/mtab | grep " ext2 \| ext3 \| ext4 \| xfs \| vfat \| zfs" | grep -v "/tank/machines" | grep -v "/tank/backups" | grep -v "/tank/mirror" | cut -f 2 -d ' '`
     else 
-    	MOUNTPOINTS=`ssh -4 -b 192.147.168.1 $BACKUPHOST cat /etc/mtab | grep " ext2 \| ext3 \| ext4 \| xfs \| vfat" | cut -f 2 -d ' '`
+    	MOUNTPOINTS=`ssh -4 -b $SOURCEIP $BACKUPHOST cat /etc/mtab | grep " ext2 \| ext3 \| ext4 \| xfs \| vfat" | cut -f 2 -d ' '`
     fi
     if [ -z "$MOUNTPOINTS" ]; then
 	echo "Error: cannot fetch list of mountpoints to backup"
@@ -141,9 +134,9 @@ function runbackups {
       if [ -d "/$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR" ]; then
         EXCLUDEFROM=/$FILESYSTEM/$EXCLUDEBASE$BACKUPHOST
         if [ -f "$EXCLUDEFROM" ]; then
-          rsync -e 'ssh -4 -b 192.147.168.1' -avx --exclude /dev --exclude /sys --exclude /proc --delete --exclude-from $EXCLUDEFROM $BACKUPHOST:$MOUNTPOINT /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR > /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR-rsync
+          rsync -e 'ssh -4 -b $SOURCEIP' -avx --exclude /dev --exclude /sys --exclude /proc --delete --exclude-from $EXCLUDEFROM $BACKUPHOST:$MOUNTPOINT /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR > /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR-rsync
         else
-          rsync -e 'ssh -4 -b 192.147.168.1' -avx --exclude /dev --exclude /sys --exclude /proc --delete $BACKUPHOST:$MOUNTPOINT /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR > /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR-rsync
+          rsync -e 'ssh -4 -b $SOURCEIP' -avx --exclude /dev --exclude /sys --exclude /proc --delete $BACKUPHOST:$MOUNTPOINT /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR > /$FILESYSTEM/$BACKUPHOST/mountpoints/$DESTDIR-rsync
         fi
         RETVAL=$?
         [ $RETVAL -ne 0 -a $RETVAL -ne 24 ] && exit $RETVAL
